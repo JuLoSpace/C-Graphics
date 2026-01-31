@@ -4,11 +4,17 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define MAX_VERTICES 1000
+#define MAX_VERTICES 100000
 
 #define ROTATE_XY 0
 #define ROTATE_XZ 1
 #define ROTATE_YZ 2
+
+struct RGB {
+    int r;
+    int g;
+    int b;
+};
 
 struct vec3 {
     long double x;
@@ -42,12 +48,14 @@ void rotate(struct vec3 *verticies, long double angle, int rotate);
 
 int main(int argc, char **argv) {
 
-    struct Object sh = sphere(0.5, 30);
+    struct Object sh = sphere(0.5, 300);
 
-    int w = 9 * 60;
-    int h = 9 * 60;
+    sh.displacement = (struct vec3) {0, 0, 1};
 
-    long double angleSpeed = 0.005;
+    int w = 600;
+    int h = 600;
+
+    long double angleSpeed = 0.05;
 
     for (int frame = 0; frame <= 100; frame++) {\
 
@@ -63,31 +71,30 @@ int main(int argc, char **argv) {
         rotate(sh.vs, angleSpeed, ROTATE_XZ);
 
         struct vec2 tr[MAX_VERTICES];
+        struct vec2 m_points[MAX_VERTICES];
+
+        struct RGB r[h][w];
+
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                r[x][y] = (struct RGB) {0x00, 0x00, 0x00};
+            }
+        }
 
         for (int i = 0; i < sh.vertices; i++) {
-            tr[i] = translate(sh.vs[i]);
+            struct vec3 u = (struct vec3) {sh.vs[i].x + sh.displacement.x, sh.vs[i].y + sh.displacement.y, sh.vs[i].z + sh.displacement.z};
+            tr[i] = translate(u);
+            m_points[i] = (struct vec2) {(tr[i].x + 1.0) / 2 * w, (tr[i].y + 1.0) / 2 * h};
+            if ((int) m_points[i].x >= 0 && (int) m_points[i].x < w && (int) m_points[i].y >= 0 && (int) m_points[i].y < h) {
+                r[(int) m_points[i].x][(int) m_points[i].y] = (struct RGB) {0xFF, 0x00, 0x00};
+            }
         }
 
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                bool t = false;
-                for (int i = 0; i < sh.vertices; i++) {
-                    int sh_x = (tr[i].x + 1.0) / 2 * w;
-                    int sh_y = (tr[i].y + 1.0) / 2 * h;
-                    if (sh_x == x && sh_y == y) {
-                        t = true;
-                        break;
-                    }
-                }
-                if (t) {
-                    putc(0xFF, fp);
-                    putc(0x00, fp);
-                    putc(0x00, fp);
-                } else {
-                    putc(0x00, fp);
-                    putc(0x00, fp);
-                    putc(0x00, fp);
-                }
+                putc(r[x][y].r, fp);
+                putc(r[x][y].g, fp);
+                putc(r[x][y].b, fp);
             }
         }
         fclose(fp);
@@ -119,7 +126,7 @@ struct Object sphere(long double radius, int parts) {
 }
 
 struct vec2 translate(const struct vec3 a) {
-    return (struct vec2) {a.x / (1.0 + a.z), a.y / (1.0 + a.z)};
+    return (struct vec2) {a.x / a.z, a.y / a.z};
 }
 
 void rotate(struct vec3 *verticies, long double angle, int rotate) {
